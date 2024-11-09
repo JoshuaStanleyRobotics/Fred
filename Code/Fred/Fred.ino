@@ -1,10 +1,9 @@
 /*
-   Description: This program is used to control a remote control hexagonal folding robot with IMU feedback
+   Description: This program is used to control a remote control hexagonal folding robot
 
-        Wiring: The required components are 3x MG90S servos, a NRF24L01 radio module, a MPU6050 IMU, and an Arduino Nano
+        Wiring: The required components are 3x MG90S servos, a NRF24L01 radio module, and an Arduino Nano
         The servos are connected with brown wire to GND, red wire to Vin, and orange wire to D3, D5, and D6
         The NRF24L01 is connected 3.3V to 3v3, GND to GND, CSN to D10, MOSI to D11, CE to D9, SCK to D13, MISO to D12
-        The MPU6050 is wired VCC to 5V, GND to GND, SCL to A5, and SDA to A4
 */
 
 //Libraries
@@ -19,8 +18,8 @@ RF24 radio(9, 10);
 ramp angle[3];
 
 //Variables
-byte mode = 0;
 byte cnt = 0;
+byte mode = 0;
 int yDir = 0;
 int duration = 0;                                                                                   //Duration of move from one shape to the next
 byte data[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -42,7 +41,7 @@ const byte seq[4][6][3] = {   /*[mode][cnt][servo]*/                            
 };
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);                                                                               //Begin serial communication
   Serial.println("Serial Communication Initialized");
 
   radio.begin();                                                                                    //Begin radio communication
@@ -65,15 +64,15 @@ void setup() {
 void loop() {
   if (radio.available()) {
     radio.read(&data, sizeof(data));                                                                //Read in radio data if available
-    debounce();
 
     if (data[1] == 0) yDir = 0;                                                                     //Forward and reverse controlled by front to back motion of left joystick
     else if (data[1] > 127) yDir = 1;
-    else yDir = -1;
-    
+    else yDir = -1;                                                        
+
     duration = map(data[9], 0, 255, 400, 100);                                                      //Driving speed controlled by right potentiometer
   }
-
+  debounce();
+  
   if (but[2][2]) {                                                                                  //Goes to flat state if right joystick is pressed
     for (int i = 0; i < 3; i++) {
       angle[i].go(map(flat[i], 90, 180, right[i], straight[i]));
@@ -95,9 +94,9 @@ void loop() {
       angle[i].go(map(seq[mode][cnt][i], 90, 180, right[i], straight[i]), duration);
     }
   }
-
-  if ((millis() - millisPrev) > angle[0][0].getDuration()) {                                        //If the previous shape change is complete:
-    if (yDir != 0) {                                                                                  //Increment or decrement the shape [cnt] (depending on forward or reverse commanded)
+  
+  if ((millis() - millisPrev) > angle[0].getDuration()) {                                           //If the previous shape change is complete:
+    if (yDir != 0) {                                                                                //Increment or decrement the shape [cnt] (depending on forward or reverse commanded)
       if (yDir > 0) {
         if (cnt == 5) cnt = 0;
         else cnt++;
@@ -106,8 +105,8 @@ void loop() {
         if (cnt == 0) cnt = 5;
         else cnt--;
       }
-      for (int i = 0; i < 3; i++) {
-        angle[i].go(map(seq[mode][cnt][i], 90, 180, right[i], straight[i]), duration);                //Send ramp variable to angles of next shape in sequence
+      for (int i = 0; i < 3; i++) {                                                 
+        angle[i].go(map(seq[mode][cnt][i], 90, 180, right[i], straight[i]), duration);              //Send ramp variable to angles of next shape in sequence
       }
       millisPrev = millis();
     }
@@ -115,7 +114,6 @@ void loop() {
   for (int i = 0; i < 3; i++) {
     servo[i].write(angle[i].update());                                                              //Set servo angles to updated ramp angle value
   }
-
 }
 
 void debounce() {                                                                                   //Causes momentary button inputs from controller to trigger on once when pressed and not for the duration of being pressed
